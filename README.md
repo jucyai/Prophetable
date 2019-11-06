@@ -12,7 +12,11 @@ docker build -t prophetmodeller .
 ## Run
 
 ```sh
-docker run -d -it -v data:/app/data --name=pm prophetmodeller bash run.sh
+docker run --rm -it -d \
+    -v /path/to/volume/data:/app/data \
+    --name=pm \
+    prophetmodeller \
+    bash run.sh
 ```
 
 ## Log
