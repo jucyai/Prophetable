@@ -4,11 +4,11 @@
     "datafile": "example.csv",
     "delimiter": ",",
     "floor": 0,
-    "tsfreq": "H",
+    "tsfreq": "D",
     "nafill": 0,
     "futureperiods": 10000,
-    "mintraindate": "2016-08-01",
-    "maxtraindate": "2019-07-31",
+    "mintraindate": "2012-08-01",
+    "maxtraindate": "2014-07-31",
     "holidays": [
         {
             "holiday": "h1",
