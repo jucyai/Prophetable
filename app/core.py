@@ -72,8 +72,9 @@ class Model(Common):
     """
     def __init__(self, config):
         super().__init__(config=config)
+        self.model = None
     
-    def train(self, train_data_file, outfile, holidays_data_file=None):
+    def train(self, train_data_file, holidays_data_file=None):
         train_data = pd.read_csv(train_data_file)
 
         holidays_data = None
@@ -90,12 +91,14 @@ class Model(Common):
             holidays=holidays_data
         ).fit(train_data)
 
-        # TODO: separate to a predict method
-        df_future = model.make_future_dataframe(
+        self.model = model
+        return model
+
+    def predict(self, outfile):
+        df_future = self.model.make_future_dataframe(
             periods=self.future_periods,
             freq=self.ts_freq
         )
-
-        forecast = model.predict(df_future)
+        forecast = self.model.predict(df_future)
         forecast.to_csv(outfile, index=False)
         return forecast
