@@ -92,14 +92,9 @@ class Model(Common):
     def __init__(self, config):
         super().__init__(config=config)
         self.model = None
-<<<<<<< HEAD:app/prophet.py
         self.forecast = None
     
     def train(self, train_data_file=None, holidays_data_file=None):
-=======
-    
-    def train(self, train_data_file, holidays_data_file=None):
->>>>>>> 790d62157f5428d477887d8cfb97ba597c808f05:app/core.py
         train_data = pd.read_csv(train_data_file)
 
         holidays_data = None
@@ -121,17 +116,12 @@ class Model(Common):
         self.model = model
         return model
 
-<<<<<<< HEAD:app/prophet.py
     def predict(self, outfile=None):
-=======
-    def predict(self, outfile):
->>>>>>> 790d62157f5428d477887d8cfb97ba597c808f05:app/core.py
         df_future = self.model.make_future_dataframe(
             periods=self.future_periods,
             freq=self.ts_freq
         )
         forecast = self.model.predict(df_future)
-<<<<<<< HEAD:app/prophet.py
         if outfile:
             forecast.to_csv(outfile, index=False)
         self.forecast = forecast
@@ -148,7 +138,3 @@ class Model(Common):
         import pickle
         with open(filename, 'rb') as f:
             self.model = pickle.load(f)
-=======
-        forecast.to_csv(outfile, index=False)
-        return forecast
->>>>>>> 790d62157f5428d477887d8cfb97ba597c808f05:app/core.py
