@@ -1,7 +1,11 @@
 {
+    "datafile": "example.csv",
+    "traindatafile": "model_data.csv",
+    "modeloutputfile": "output.csv",
+    "modelpicklefile": "model.pickle",
+    "holidaydatafile": "holidays_data.csv",
     "ds": "ds",
     "y": "y",
-    "datafile": "example.csv",
     "delimiter": ",",
     "floor": 0,
     "tsfreq": "D",
@@ -9,6 +13,9 @@
     "futureperiods": 10000,
     "mintraindate": "2012-08-01",
     "maxtraindate": "2014-07-31",
+    "yearlyseasonality": true,
+    "monthlyseasonality": false,
+    "dailyseasonality": false,
     "holidays": [
         {
             "holiday": "h1",

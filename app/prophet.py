@@ -12,10 +12,22 @@ def _read_config(filename):
 
 class Common:
     """Base class
+
+    # Arguments:
+        yearly_seasonality: Fit yearly seasonality. Can be 'auto', True, False, or a number of 
+            Fourier terms to generate.
+        weekly_seasonality: Fit weekly seasonality. Can be 'auto', True, False, or a number of 
+            Fourier terms to generate.
+        daily_seasonality: Fit daily seasonality.   Can be 'auto', True, False, or a number of 
+            Fourier terms to generate.
     """
     def __init__(self, config):
         config = _read_config(config)
         self.datafile = config.get('datafile') or 'example.csv'
+        self.train_datafile = config.get('traindatafile') or 'model_data.csv'
+        self.model_output_file = config.get('modeloutputfile') # can be None
+        self.model_pickle_file = config.get('modelpicklefile') # can be None
+        self.holiday_datafile = config.get('holidaydatafile') # can be None
         self.delimiter = config.get('delimiter') or ','
         self.floor = config.get('floor')
         self.ds_col = config.get('ds') or 'ds'
@@ -26,6 +38,9 @@ class Common:
         self.na_fill = float(config.get('nafill') or 0)
         self.future_periods = config.get('futureperiods')
         self.holidays = config.get('holidays')
+        self.yearly_seasonality = config.get('yearlyseasonality') or False
+        self.weekly_seasonality = config.get('weeklyseasonality') or False
+        self.daily_seasonality = config.get('dailyseasonality') or False
         self.data = pd.read_csv('data/'+self.datafile, sep=self.delimiter)
         if self.max_train_date is None:
             self.max_train_date = self.data[self.ds_col].max()
@@ -39,7 +54,9 @@ class Data(Common):
     def __init__(self, config):
         super().__init__(config=config)
     
-    def make_model_data(self, outfile):
+    def make_model_data(self, outfile=None):
+        if outfile is None:
+            outfile = self.train_datafile
         model_data = pd.DataFrame(
             {'ds': pd.date_range(self.min_train_date, self.max_train_date, freq=self.ts_freq)}
         )
@@ -55,7 +72,9 @@ class Data(Common):
         model_data.to_csv(outfile, index=False)
         return model_data
 
-    def make_holidays_data(self, outfile):
+    def make_holidays_data(self, outfile=None):
+        if outfile is None:
+            outfile = self.holiday_datafile
         holidays_data = None
         that_holidays = self.holidays
         if that_holidays is not None:
@@ -68,34 +87,54 @@ class Data(Common):
 
 
 class Model(Common):
-    """Model training
+    """Model training and forecasting
     """
     def __init__(self, config):
         super().__init__(config=config)
+        self.model = None
+        self.forecast = None
     
-    def train(self, train_data_file, outfile, holidays_data_file=None):
+    def train(self, train_data_file=None, holidays_data_file=None):
         train_data = pd.read_csv(train_data_file)
 
         holidays_data = None
         if  holidays_data_file is not None:
             holidays_data = pd.read_csv(holidays_data_file)
+        elif self.holiday_datafile is not None:
+            holidays_data = pd.read_csv(self.holiday_datafile)
 
         if self.floor is not None:
             train_data['floor'] = self.floor
         
         model = Prophet(
-            # changepoint_prior_scale=0.05,
-            # holidays_prior_scale=5,
-            yearly_seasonality=True,
+            yearly_seasonality=self.yearly_seasonality,
+            weekly_seasonality=self.weekly_seasonality,
+            daily_seasonality=self.daily_seasonality,
             holidays=holidays_data
         ).fit(train_data)
 
-        # TODO: separate to a predict method
-        df_future = model.make_future_dataframe(
+        self.model = model
+        return model
+
+    def predict(self, outfile=None):
+        df_future = self.model.make_future_dataframe(
             periods=self.future_periods,
             freq=self.ts_freq
         )
-
-        forecast = model.predict(df_future)
-        forecast.to_csv(outfile, index=False)
+        forecast = self.model.predict(df_future)
+        if outfile:
+            forecast.to_csv(outfile, index=False)
+        self.forecast = forecast
         return forecast
+
+    def save_model(self, filename):
+        import pickle
+        with open(filename, 'wb') as f:
+            pickle.dump(self.model, f)
+
+    def load_model(self, filename, overwrite=False):
+        if self.model is not None and not overwrite:
+            raise ValueError('Model already exists. Set overwrite to True to replace.')
+        import pickle
+        with open(filename, 'rb') as f:
+            self.model = pickle.load(f)

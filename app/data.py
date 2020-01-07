@@ -1,4 +1,4 @@
-from core import Data
+from prophet import Data
 
 
 d = Data(config='data/config.json')
