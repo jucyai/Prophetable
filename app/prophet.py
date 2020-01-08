@@ -95,6 +95,8 @@ class Model(Common):
         self.forecast = None
     
     def train(self, train_data_file=None, holidays_data_file=None):
+        if train_data_file is None:
+            train_data_file = self.train_datafile
         train_data = pd.read_csv(train_data_file)
 
         holidays_data = None
@@ -122,17 +124,23 @@ class Model(Common):
             freq=self.ts_freq
         )
         forecast = self.model.predict(df_future)
+        self.forecast = forecast
+        if outfile is None:
+            outfile = self.model_output_file
         if outfile:
             forecast.to_csv(outfile, index=False)
-        self.forecast = forecast
         return forecast
 
-    def save_model(self, filename):
+    def save_model(self, filename=None):
         import pickle
+        if filename is None:
+            filename = self.model_pickle_file
         with open(filename, 'wb') as f:
             pickle.dump(self.model, f)
 
-    def load_model(self, filename, overwrite=False):
+    def load_model(self, filename=None, overwrite=False):
+        if filename is None:
+            filename = self.model_pickle_file
         if self.model is not None and not overwrite:
             raise ValueError('Model already exists. Set overwrite to True to replace.')
         import pickle
