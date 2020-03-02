@@ -1,5 +1,5 @@
 {
-    "datafile": "example.csv",
+    "data_uri": "example.csv",
     "traindatafile": "model_data.csv",
     "modeloutputfile": "output.csv",
     "modelpicklefile": "model.pickle",
@@ -9,7 +9,7 @@
     "delimiter": ",",
     "floor": 0,
     "tsfreq": "D",
-    "nafill": 0,
+    "na_fill": "0",
     "futureperiods": 10000,
     "mintraindate": "2012-08-01",
     "maxtraindate": "2014-07-31",

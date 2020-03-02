@@ -1,19 +1,16 @@
-FROM python:3.6.8-slim
-
-RUN apt-get -y update && apt-get install -y \
-  python3-dev \
-  apt-utils \
-  python-dev \
-  build-essential \
-&& rm -rf /var/lib/apt/lists/*
+FROM python:3.7
 
 RUN pip install --upgrade setuptools
 RUN pip install cython
 RUN pip install numpy
+RUN pip install pandas
 RUN pip install matplotlib
 RUN pip install pystan
 RUN pip install fbprophet
+RUN pip install redis
 
-WORKDIR /app
+RUN mkdir -p /home/project/job
+WORKDIR /home/project/job
+COPY . /home/project/job
 
-COPY app /app
+ENTRYPOINT [ "python", "app/run.py" ]
