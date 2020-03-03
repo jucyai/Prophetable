@@ -5,7 +5,7 @@
 ```sh
 docker build -t prophetmodeller . && \
 docker run --rm -d \
-    -v /full/path/to/volume:data \
+    -v /full/path/to/volume:/data \
     --name=pm \
     prophetmodeller
 ```
@@ -23,7 +23,7 @@ docker build -t prophetmodeller .
 
 ```sh
 docker run --rm -d \
-    -v /full/path/to/volume:data \
+    -v /full/path/to/volume:/data \
     --name=pm \
     prophetmodeller
 ```
