@@ -18,21 +18,19 @@ class Prophetable:
 
         config: Config file URI
             # Prophetable config:
-
                 # File related
-                data_uri:
-                train_uri:
-                output_uri:
-                model_uri:
-                holiday_uri:
-                delimiter:
+                data_uri: URI for input data, required
+                train_uri: URI for training data, if saving is needed
+                output_uri: URI for forecast output, if saving is needed
+                model_uri: URI for model object, if saving is needed
+                holiday_uri: URI for holidays data, if provided
+                delimiter: The delimiler for input data
 
                 # Model related
                 saturating_min: Maps to `floor` column in Prophet training data.
                 saturating_max: Maps to `cap` column in Prophet training data.
 
             # Mapped directly from Prophet forecaster
-
                 yearly_seasonality: Fit yearly seasonality. Can be 'auto', True, False, or a number
                     of Fourier terms to generate.
                 weekly_seasonality: Fit weekly seasonality. Can be 'auto', True, False, or a number
@@ -84,7 +82,6 @@ class Prophetable:
         ## Placeholder for other attributes set later
         self.data = None
 
-
     def _get_config(self, attr, required=True, default=None, type_check=None):
         try:
             set_attr = self._config[attr]
@@ -127,10 +124,6 @@ class Prophetable:
 
     def train(self):
         """Method to train Prophet forecaster
-
-        # Arguments
-            train_data_uri:
-            holidays_data_uri:
         """
         model = Prophet().fit(self.data)
         self.model = model
