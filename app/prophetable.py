@@ -47,6 +47,13 @@ class Prophetable:
                 random_seed: Random seed for reproducibility.
                 country_holidays: Name of the country, like 'UnitedStates' or 'US'. Built-in country
                     holidays can only be set for a single country.
+                custom_seasonalities: list of dictionary including:
+                    name: string name of the seasonality component.
+                    period: float number of days in one period.
+                    fourier_order: int number of Fourier components to use.
+                    prior_scale: optional float prior scale for this component.
+                    mode: optional 'additive' or 'multiplicative'
+                    condition_name: string name of the seasonality condition.
 
             # Mapped directly from Prophet forecaster
                 growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
@@ -133,6 +140,7 @@ class Prophetable:
         self._get_config('na_fill', default=None, required=False, type_check=[int, float])
         self._get_config('random_seed', default=None, required=False, type_check=[int])
         self._get_config('country_holidays', default=None, required=False, type_check=[str])
+        self._get_config('custom_seasonalities', default=None, required=False, type_check=[list])
 
         ## Mapped directly for Prophet
         self._get_config('growth', default='linear', required=False, type_check=[str])
@@ -255,6 +263,19 @@ class Prophetable:
         )
         if self.country_holidays is not None:
             model.add_country_holidays(country_name=self.country_holidays)
+        if self.custom_seasonalities is not None:
+            kwargs = [
+                'name',
+                'period',
+                'fourier_order',
+                'prior_scale',
+                'mode',
+                'condition_name'
+            ]
+            for s in self.custom_seasonalities:
+                model.add_seasonality(**{
+                    k: v for k, v in s.items() if k in kwargs
+                })
         model.fit(self.data)
         if self.model_uri is not None:
             _create_parent_dir(self.model_uri)
@@ -262,7 +283,6 @@ class Prophetable:
                 pickle.dump(model, f)
             logger.info(f'Model object saved to {self.model_uri}')
         self.model = model
-
 
     def predict(self):
         future = self.model.make_future_dataframe(

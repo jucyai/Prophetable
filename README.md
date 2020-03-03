@@ -47,3 +47,7 @@ docker stop pm
 ```sh
 docker rm pm
 ```
+
+## TODO
+
+Implemented up to `Specifying Custom Seasonalities`

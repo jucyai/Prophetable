@@ -1,9 +1,14 @@
 from prophetable import Prophetable
 
-p = Prophetable(config='data/config.full.json')
-# p = Prophetable(config='data/config.holidays.json')
+# p = Prophetable(config='data/config.full.json')
+p = Prophetable(config='data/config.seasonalities.json')
 p.run()
 print(p.forecast.tail())
+
+try:
+    print(p.model.seasonalities)
+except:
+    print('No seasonalities')
 
 try:
     print(p.model.train_holiday_names)
