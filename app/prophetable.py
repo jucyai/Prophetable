@@ -45,7 +45,8 @@ class Prophetable:
                 saturating_min: Maps to `floor` column in Prophet training data.
                 saturating_max: Maps to `cap` column in Prophet training data.
                 random_seed: Random seed for reproducibility.
-
+                country_holidays: Name of the country, like 'UnitedStates' or 'US'. Built-in country
+                    holidays can only be set for a single country.
 
             # Mapped directly from Prophet forecaster
                 growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
@@ -54,7 +55,8 @@ class Prophetable:
                 n_changepoints: Number of potential changepoints to include. Not used if input 
                     `changepoints` is supplied. If `changepoints` is not supplied, then 
                     n_changepoints potential changepoints are selected uniformly from the first 
-                    `changepoint_range` proportion of the history.
+                    `changepoint_range` proportion of the history. 
+                    Example: ['2014-01-01', '2014-01-03']
                 changepoint_range: Proportion of history in which trend changepoints will be 
                     estimated. Defaults to 0.8 for the first 80%. Not used if `changepoints` is 
                     specified.
@@ -106,8 +108,8 @@ class Prophetable:
             'train_uri',
             'output_uri',
             'model_uri',
-            'holiday_input_uri',
-            'holiday_output_uri',
+            'holidays_input_uri',
+            'holidays_output_uri',
         ]:
             self._get_config(attr, required=False)
 
@@ -130,6 +132,7 @@ class Prophetable:
         # leave the dates in future, then Prophet will give you a prediction for their values.
         self._get_config('na_fill', default=None, required=False, type_check=[int, float])
         self._get_config('random_seed', default=None, required=False, type_check=[int])
+        self._get_config('country_holidays', default=None, required=False, type_check=[str])
 
         ## Mapped directly for Prophet
         self._get_config('growth', default='linear', required=False, type_check=[str])
@@ -139,7 +142,7 @@ class Prophetable:
         self._get_config('yearly_seasonality', default='auto', required=False)
         self._get_config('weekly_seasonality', default='auto', required=False)
         self._get_config('daily_seasonality', default='auto', required=False)
-        self._get_config('holidays', default=None, required=False)
+        self._get_config('holidays', default=None, required=False, type_check=[list])
         self._get_config('seasonality_mode', default='additive', required=False, type_check=[str])
         self._get_config(
             'seasonality_prior_scale', default=10.0, required=False, type_check=[float, int]
@@ -160,7 +163,9 @@ class Prophetable:
 
         ## Placeholder for other attributes set later
         self.data = None
+        self.holidays_data = None
         self.model = None
+        self.forecast = None
 
         ## Seed
         if self.random_seed is not None:
@@ -179,6 +184,24 @@ class Prophetable:
                 set_attr = default
         setattr(self, attr, set_attr)
         logger.info(f'{attr} set to {set_attr}')
+
+    def make_holidays_data(self):
+        if self.holidays_input_uri is not None:
+            self.holidays_data = pd.read_csv(self.holidays_input_uri)
+        else:
+            if self.holidays is not None:
+                holidays = self.holidays
+                for i, h in enumerate(holidays):
+                    holidays[i]['ds'] = pd.to_datetime(h['ds'])
+                    holidays[i] = pd.DataFrame(holidays[i])
+                self.holidays_data = pd.concat(holidays)
+        if self.holidays_output_uri is not None:
+            if self.holidays_data is not None:
+                _create_parent_dir(self.holidays_output_uri)
+                self.holidays_data.to_csv(self.holidays_output_uri, index=False)
+                logger.info(f'Holidays data saved to {self.holidays_output_uri}')
+            else:
+                logger.warn(f'No holidays data to save')
 
     def make_data(self):
         self.data = pd.read_csv(self.data_uri, sep=self.delimiter)
@@ -219,7 +242,8 @@ class Prophetable:
             yearly_seasonality=self.yearly_seasonality,
             weekly_seasonality=self.weekly_seasonality,
             daily_seasonality=self.daily_seasonality,
-            holidays=self.holidays,
+            # holidays is not used directly from config, it's processed in make_holidays_data
+            holidays=self.holidays_data,
             seasonality_mode=self.seasonality_mode,
             seasonality_prior_scale=self.seasonality_prior_scale,
             holidays_prior_scale=self.holidays_prior_scale,
@@ -228,7 +252,10 @@ class Prophetable:
             interval_width=self.interval_width,
             uncertainty_samples=self.uncertainty_samples,
             stan_backend=self.stan_backend
-        ).fit(self.data)
+        )
+        if self.country_holidays is not None:
+            model.add_country_holidays(country_name=self.country_holidays)
+        model.fit(self.data)
         if self.model_uri is not None:
             _create_parent_dir(self.model_uri)
             with open(self.model_uri, 'wb') as f:
@@ -248,3 +275,9 @@ class Prophetable:
             forecast.to_csv(self.output_uri, index=False)
             logger.info(f'Forecast output saved to {self.output_uri}')
         self.forecast = forecast
+
+    def run(self):
+        self.make_holidays_data()
+        self.make_data()
+        self.train()
+        self.predict()
