@@ -50,4 +50,14 @@ docker rm pm
 
 ## TODO
 
-Implemented up to `Specifying Custom Seasonalities`
+- Seasonalities that depend on other factors
+- Prior scale for holidays and seasonality
+- Additional regressors
+- Multiplicative Seasonality
+- Uncertainty in the trend
+- Uncertainty in seasonality
+- Outliers
+- Sub-daily data
+- Data with regular gaps
+- Monthly data
+- Diagnostics
