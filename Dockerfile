@@ -9,8 +9,8 @@ RUN pip install pystan
 RUN pip install fbprophet
 RUN pip install redis
 
-RUN mkdir -p /home/project/job
-WORKDIR /home/project/job
-COPY . /home/project/job
+RUN mkdir -p /home/project/pm
+WORKDIR /home/project/pm
+COPY . /home/project/pm
 
 ENTRYPOINT [ "python", "app/run.py" ]

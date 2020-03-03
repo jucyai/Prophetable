@@ -1,6 +1,6 @@
 export $(egrep -v '^#' .env | xargs)
 
 docker build -t prophetmodeller . && docker run --rm \
-    -v $VOLUME:/app/data \
+    -v $VOLUME:/data \
     --name=pm \
     prophetmodeller

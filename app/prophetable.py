@@ -1,4 +1,6 @@
 import json
+import pickle
+import pathlib
 
 import pandas as pd
 from fbprophet import Prophet
@@ -9,6 +11,13 @@ import logging
 log_format = 'Prophetable | %(asctime)s | %(name)s | %(levelname)s | %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=log_format)
 logger = logging.getLogger(__name__)
+
+
+def _create_parent_dir(full):
+    dir_parts = pathlib.PurePath(full).parts[:-1]
+    if len(dir_parts) > 0:
+        pathlib.Path(*dir_parts).mkdir(parents=True, exist_ok=True)
+        logger.debug(f'Created path {pathlib.Path(*dir_parts)}')
 
 
 class Prophetable:
@@ -31,6 +40,7 @@ class Prophetable:
                 saturating_max: Maps to `cap` column in Prophet training data.
 
             # Mapped directly from Prophet forecaster
+                growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
                 yearly_seasonality: Fit yearly seasonality. Can be 'auto', True, False, or a number
                     of Fourier terms to generate.
                 weekly_seasonality: Fit weekly seasonality. Can be 'auto', True, False, or a number
@@ -76,6 +86,9 @@ class Prophetable:
         # leave the dates in future, then Prophet will give you a prediction for their values.
         self._get_config('na_fill', default=None, required=False, type_check=[int, float])
 
+        ## Mapped directly for Prophet
+        self._get_config('growth', default='linear', required=False, type_check=[str])
+
         ## Prediction
         self._get_config('future_periods', default=365, required=False, type_check=[int])
 
@@ -119,14 +132,22 @@ class Prophetable:
         if self.saturating_max is not None:
             model_data['cap'] = self.saturating_max
         if self.train_uri is not None:
+            _create_parent_dir(self.train_uri)
             model_data.to_csv(self.train_uri, index=False)
+            logger.info(f'Training data saved to {self.train_uri}')
         self.data = model_data
 
     def train(self):
         """Method to train Prophet forecaster
         """
         model = Prophet().fit(self.data)
+        if self.model_uri is not None:
+            _create_parent_dir(self.model_uri)
+            with open(self.model_uri, 'wb') as f:
+                pickle.dump(model, f)
+            logger.info(f'Model object saved to {self.model_uri}')
         self.model = model
+
 
     def predict(self):
         future = self.model.make_future_dataframe(
@@ -134,6 +155,8 @@ class Prophetable:
             freq=self.ts_frequency
         )
         forecast = self.model.predict(future)
-        self.forecast = forecast
         if self.output_uri is not None:
+            _create_parent_dir(self.output_uri)
             forecast.to_csv(self.output_uri, index=False)
+            logger.info(f'Forecast output saved to {self.output_uri}')
+        self.forecast = forecast

@@ -1,0 +1,8 @@
+{
+    "data_uri": "/data/example_wp_log_peyton_manning.csv",
+    "train_uri": "/data/models/full/train.csv",
+    "output_uri": "/data/models/full/output.csv",
+    "model_uri": "/data/models/full/model.pickle",
+    "delimiter": ",",
+    "growth": "linear"
+}
