@@ -60,4 +60,4 @@ docker rm pm
 - Sub-daily data
 - Data with regular gaps
 - Monthly data
-- Diagnostics
+- Diagnostics (Incl. grid search, automl)
