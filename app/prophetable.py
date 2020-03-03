@@ -2,6 +2,7 @@ import json
 import pickle
 import pathlib
 
+import numpy as np
 import pandas as pd
 from fbprophet import Prophet
 
@@ -39,8 +40,12 @@ class Prophetable:
                 delimiter: The delimiler for input data.
 
                 # Model related
+                min_train_date: Start date for training data.
+                max_train_date: End date for training data.
                 saturating_min: Maps to `floor` column in Prophet training data.
                 saturating_max: Maps to `cap` column in Prophet training data.
+                random_seed: Random seed for reproducibility.
+
 
             # Mapped directly from Prophet forecaster
                 growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
@@ -90,7 +95,7 @@ class Prophetable:
     def __init__(self, config):
         with open(config, 'r') as f:
             self._config = json.load(f)
-        
+
         ## Required file uri
         for attr in ['data_uri']:
             self._get_config(attr)
@@ -117,7 +122,6 @@ class Prophetable:
         self._get_config('min_train_date', default=None, required=False) 
         # Modified in make_data()
         self._get_config('max_train_date', default=None, required=False)
-        self._get_config('holidays', default=None, required=False)
         self._get_config('saturating_min', default=None, required=False, type_check=[int, float])
         self._get_config('saturating_max', default=None, required=False, type_check=[int, float])
         # Set the default na_fill to None
@@ -125,6 +129,7 @@ class Prophetable:
         # Prophet has no problem with missing data. If you set their values to NA in the history but
         # leave the dates in future, then Prophet will give you a prediction for their values.
         self._get_config('na_fill', default=None, required=False, type_check=[int, float])
+        self._get_config('random_seed', default=None, required=False, type_check=[int])
 
         ## Mapped directly for Prophet
         self._get_config('growth', default='linear', required=False, type_check=[str])
@@ -156,6 +161,10 @@ class Prophetable:
         ## Placeholder for other attributes set later
         self.data = None
         self.model = None
+
+        ## Seed
+        if self.random_seed is not None:
+            np.random.seed(self.random_seed)
 
     def _get_config(self, attr, required=True, default=None, type_check=None):
         try:
