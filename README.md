@@ -1,13 +1,15 @@
-# Docker Prophet Modeller
+# Prophetable
+
+Run fbprophet from config files. Runnable from docker.
 
 ## Quick start
 
 ```sh
-docker build -t prophetmodeller . && \
+docker build -t prophetable . && \
 docker run --rm -d \
     -v /full/path/to/volume:/data \
     --name=pm \
-    prophetmodeller
+    prophetable
 ```
 
 ## Build
@@ -25,7 +27,7 @@ docker build -t prophetmodeller .
 docker run --rm -d \
     -v /full/path/to/volume:/data \
     --name=pm \
-    prophetmodeller
+    prophetable
 ```
 
 ## Log
