@@ -50,14 +50,7 @@ docker rm pm
 
 ## TODO
 
-- Seasonalities that depend on other factors
-- Prior scale for holidays and seasonality
-- Additional regressors
-- Multiplicative Seasonality
-- Uncertainty in the trend
-- Uncertainty in seasonality
 - Outliers
-- Sub-daily data
-- Data with regular gaps
-- Monthly data
 - Diagnostics (Incl. grid search, automl)
+- Seasonalities that depend on other factors
+- Additional regressors
