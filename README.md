@@ -51,5 +51,6 @@ docker rm pm
 ## TODO
 
 - Diagnostics (Incl. grid search, automl)
+- Support S3 for model pickle storage
 - Seasonalities that depend on other factors
 - Additional regressors

@@ -8,6 +8,7 @@ RUN pip install matplotlib
 RUN pip install pystan
 RUN pip install fbprophet
 RUN pip install redis
+RUN pip install red-panda
 
 RUN mkdir -p /home/project/pm
 WORKDIR /home/project/pm

@@ -1,8 +1,10 @@
+import sys
 import pandas as pd
 from prophetable import Prophetable
 
+
 # p = Prophetable(config='data/config.full.json')
-p = Prophetable(config='data/config.outliers.json')
+p = Prophetable(config='data/config.s3.json')
 p.run()
 print(p.data[
     (
@@ -12,6 +14,10 @@ print(p.data[
     )
 ])
 print(p.forecast.tail())
+
+print(p._storages)
+print(p._aws)
+
 
 try:
     print('Check seasonalities')

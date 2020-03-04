@@ -1,24 +1,43 @@
+import os
 import json
 import pickle
 import pathlib
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
 from fbprophet import Prophet
+from red_panda.red_panda import S3Utils
 
 import logging
 
 
 log_format = 'Prophetable | %(asctime)s | %(name)s | %(levelname)s | %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=log_format)
+logging.basicConfig(level=logging.INFO, format=log_format)
 logger = logging.getLogger(__name__)
 
 
 def _create_parent_dir(full):
+    """Creates parent path given a full uri"""
     dir_parts = pathlib.PurePath(full).parts[:-1]
     if len(dir_parts) > 0:
         pathlib.Path(*dir_parts).mkdir(parents=True, exist_ok=True)
-        logger.debug(f'Created path {pathlib.Path(*dir_parts)}')
+        logger.info(f'Created path {pathlib.Path(*dir_parts)}')
+
+
+def _split_s3_uri(uri):
+    """Get S3, bucket, key from uri
+
+    # Returns
+        A tuple of ('s3', bucket, key)
+    """
+    parsed = urlparse(uri, allow_fragments=False)
+    logger.info(f'Parsing {uri}')
+    return (
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path.lstrip('/')
+    )
 
 
 class Prophetable:
@@ -103,23 +122,33 @@ class Prophetable:
                     over all available backends and find the working one
     """
     def __init__(self, config):
+
+        self._storages = {
+            'data_uri': {'required': True},
+            'train_uri': {'required': False},
+            'output_uri': {'required': False},
+            'model_uri': {'required': False},
+            'holidays_input_uri': {'required': False},
+            'holidays_output_uri': {'required': False}
+        }
+
         with open(config, 'r') as f:
             self._config = json.load(f)
 
-        ## Required file uri
-        for attr in ['data_uri']:
-            self._get_config(attr)
-        
-        ## Nullable file uri
-        # Intermedairy files will be stored in memory only
-        for attr in [
-            'train_uri',
-            'output_uri',
-            'model_uri',
-            'holidays_input_uri',
-            'holidays_output_uri',
-        ]:
-            self._get_config(attr, required=False)
+        ## File uri
+        for attr, setting in self._storages.items():
+            # Set class property
+            self._get_config(attr, required=setting['required'])
+            # Identify storage scheme
+            uri = getattr(self, attr)
+            if uri is not None:
+                scheme, _, _ = _split_s3_uri(uri)
+                self._storages[attr]['scheme'] = scheme if scheme != '' else 'local'
+
+        self._aws = {
+            'aws_access_key_id': os.environ.get('AWS_ACCESS_KEY_ID'),
+            'aws_secret_access_key': os.environ.get('AWS_SECRET_ACCESS_KEY')
+        }
 
         ## Other file related config
         self._get_config('delimiter', default=',', required=False)
@@ -195,9 +224,37 @@ class Prophetable:
         setattr(self, attr, set_attr)
         logger.info(f'{attr} set to {set_attr}')
 
+    def save(self, obj, name, ftype='csv'):
+        if self._storages[name]['scheme'] == 'local':
+            _create_parent_dir(getattr(self, name))
+            if ftype == 'pickle':
+                with open(getattr(self, name), 'wb') as f:
+                    pickle.dump(obj, f)
+            elif ftype == 'csv':
+                obj.to_csv(getattr(self, name), index=False)
+        elif self._storages[name]['scheme'] == 's3':
+            _, bucket, key = _split_s3_uri(getattr(self, name))
+            if ftype == 'pickle':
+                raise ValueError('Saving model pickle to S3 is not supported yet')
+            elif ftype == 'csv':
+                S3Utils(aws_config=self._aws).df_to_s3(obj, bucket, key, index=False)
+
+    def load(self, name, ftype='csv'):
+        if self._storages[name]['scheme'] == 'local':
+            if ftype == 'pickle':
+                raise ValueError('Loading model pickle is not supported yet')
+            elif ftype == 'csv':
+                return pd.read_csv(getattr(self, name), sep=self.delimiter)
+        elif self._storages[name]['scheme'] == 's3':
+            _, bucket, key = _split_s3_uri(getattr(self, name))
+            if ftype == 'pickle':
+                raise ValueError('Loading model pickle is not supported yet')
+            elif ftype == 'csv':
+                return S3Utils(aws_config=self._aws).s3_to_df(bucket, key, index=False)
+
     def make_holidays_data(self):
         if self.holidays_input_uri is not None:
-            self.holidays_data = pd.read_csv(self.holidays_input_uri)
+            self.holidays_data = self.load('holidays_input_uri')
             logger.info(f'Add custom holidays from {self.holidays_input_uri}')
         else:
             if self.holidays is not None:
@@ -209,14 +266,13 @@ class Prophetable:
                 logger.info(f'Add custom holidays {self.holidays}')
         if self.holidays_output_uri is not None:
             if self.holidays_data is not None:
-                _create_parent_dir(self.holidays_output_uri)
-                self.holidays_data.to_csv(self.holidays_output_uri, index=False)
+                self.save(self.holidays_data, 'holidays_output_uri')
                 logger.info(f'Holidays data saved to {self.holidays_output_uri}')
             else:
                 logger.warn(f'No holidays data to save')
 
     def make_data(self):
-        self.data = pd.read_csv(self.data_uri, sep=self.delimiter)
+        self.data = self.load('data_uri')
         self.data[self.ds] = pd.to_datetime(self.data[self.ds], infer_datetime_format=True)
         if self.min_train_date is None:
            self.min_train_date =  self.data[self.ds].min()
@@ -261,8 +317,7 @@ class Prophetable:
                     ] = None
         
         if self.train_uri is not None:
-            _create_parent_dir(self.train_uri)
-            model_data.to_csv(self.train_uri, index=False)
+            self.save(model_data, 'train_uri')
             logger.info(f'Training data saved to {self.train_uri}')
         self.data = model_data
 
@@ -311,9 +366,7 @@ class Prophetable:
         model.fit(self.data)
 
         if self.model_uri is not None:
-            _create_parent_dir(self.model_uri)
-            with open(self.model_uri, 'wb') as f:
-                pickle.dump(model, f)
+            self.save(model, 'model_uri', ftype='pickle')
             logger.info(f'Model object saved to {self.model_uri}')
 
         self.model = model
@@ -325,8 +378,7 @@ class Prophetable:
         )
         forecast = self.model.predict(future)
         if self.output_uri is not None:
-            _create_parent_dir(self.output_uri)
-            forecast.to_csv(self.output_uri, index=False)
+            self.save(forecast, 'output_uri')
             logger.info(f'Forecast output saved to {self.output_uri}')
         self.forecast = forecast
 
