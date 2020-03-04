@@ -196,6 +196,7 @@ class Prophetable:
     def make_holidays_data(self):
         if self.holidays_input_uri is not None:
             self.holidays_data = pd.read_csv(self.holidays_input_uri)
+            logger.info(f'Add custom holidays from {self.holidays_input_uri}')
         else:
             if self.holidays is not None:
                 holidays = self.holidays
@@ -203,6 +204,7 @@ class Prophetable:
                     holidays[i]['ds'] = pd.to_datetime(h['ds'])
                     holidays[i] = pd.DataFrame(holidays[i])
                 self.holidays_data = pd.concat(holidays)
+                logger.info(f'Add custom holidays {self.holidays}')
         if self.holidays_output_uri is not None:
             if self.holidays_data is not None:
                 _create_parent_dir(self.holidays_output_uri)
@@ -261,8 +263,11 @@ class Prophetable:
             uncertainty_samples=self.uncertainty_samples,
             stan_backend=self.stan_backend
         )
+
         if self.country_holidays is not None:
             model.add_country_holidays(country_name=self.country_holidays)
+            logger.info(f'Add built-in country holidays {self.country_holidays}')
+
         if self.custom_seasonalities is not None:
             kwargs = [
                 'name',
@@ -276,12 +281,16 @@ class Prophetable:
                 model.add_seasonality(**{
                     k: v for k, v in s.items() if k in kwargs
                 })
+            logger.info(f'Add custom seasonalities {self.custom_seasonalities}')
+
         model.fit(self.data)
+
         if self.model_uri is not None:
             _create_parent_dir(self.model_uri)
             with open(self.model_uri, 'wb') as f:
                 pickle.dump(model, f)
             logger.info(f'Model object saved to {self.model_uri}')
+
         self.model = model
 
     def predict(self):
