@@ -50,7 +50,6 @@ docker rm pm
 
 ## TODO
 
-- Outliers
 - Diagnostics (Incl. grid search, automl)
 - Seasonalities that depend on other factors
 - Additional regressors

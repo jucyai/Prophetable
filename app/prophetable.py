@@ -54,6 +54,7 @@ class Prophetable:
                     prior_scale: optional float prior scale for this component.
                     mode: optional 'additive' or 'multiplicative'
                     condition_name: string name of the seasonality condition.
+                outliers: list of dates or date ranges (outliers) to remove from training.
 
             # Mapped directly from Prophet forecaster
                 growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
@@ -141,6 +142,7 @@ class Prophetable:
         self._get_config('random_seed', default=None, required=False, type_check=[int])
         self._get_config('country_holidays', default=None, required=False, type_check=[str])
         self._get_config('custom_seasonalities', default=None, required=False, type_check=[list])
+        self._get_config('outliers', default=None, required=False, type_check=[list])
 
         ## Mapped directly for Prophet
         self._get_config('growth', default='linear', required=False, type_check=[str])
@@ -229,12 +231,35 @@ class Prophetable:
         if self.ds != 'ds':
             model_data = model_data.drop(columns=[self.ds])
         model_data = model_data.rename(columns={self.y: 'y'})
+        
+        # TODO: More ways to handle missing data
         if self.na_fill is not None:
             model_data = model_data.fillna(self.na_fill)
+        
+        # Additional data processing instructed in config
         if self.saturating_min is not None:
             model_data['floor'] = self.saturating_min
         if self.saturating_max is not None:
             model_data['cap'] = self.saturating_max
+        if self.outliers is not None:
+            for o in self.outliers:
+                if isinstance(o, list):
+                    if len(o) != 2:
+                        raise ValueError(f'Length of data range config in outliers should be 2')
+                    start, end = o
+                    model_data.loc[
+                        (
+                            model_data['ds'] >= pd.to_datetime(start, infer_datetime_format=True)
+                        ) & (
+                            model_data['ds'] <= pd.to_datetime(end, infer_datetime_format=True)
+                        ),
+                        'y'
+                    ] = None
+                else:
+                    model_data.loc[
+                        model_data['ds'] == pd.to_datetime(o, infer_datetime_format=True), 'y'
+                    ] = None
+        
         if self.train_uri is not None:
             _create_parent_dir(self.train_uri)
             model_data.to_csv(self.train_uri, index=False)

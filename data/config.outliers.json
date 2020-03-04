@@ -17,7 +17,10 @@
     "random_seed": 1234,
     "country_holidays": null,
     "custom_seasonalities": null,
-    "outliers": null,
+    "outliers": [
+        ["2010-01-01", "2010-12-31"],
+        "2011-01-01"
+    ],
     "growth": "linear",
     "changepoints": null,
     "n_changepoints": 25,
