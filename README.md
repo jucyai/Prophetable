@@ -50,6 +50,5 @@ docker rm pm
 
 ## TODO
 
-- Diagnostics (Incl. grid search, automl)
 - Seasonalities that depend on other factors
 - Additional regressors

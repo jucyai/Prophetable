@@ -18,7 +18,15 @@
     "country_holidays": null,
     "custom_seasonalities": null,
     "outliers": null,
-    "cv": null,
+    "cv": {
+        "horizon": "365 days",
+        "period": "180 days",
+        "initial": "730 days",
+        "rolling_window": null,
+        "metrics": null
+    },
+    "cv_output_uri": "/data/models/full/cv.csv",
+    "cv_metrics_uri": "/data/models/full/cv_metrics.csv",
     "growth": "linear",
     "changepoints": null,
     "n_changepoints": 25,
