@@ -2,7 +2,7 @@
     "data_uri": "s3://prophetable/data/example_wp_log_peyton_manning.csv",
     "train_uri": "s3://prophetable/data/models/full/train.csv",
     "output_uri": "/data/models/full/output.csv",
-    "model_uri": "/data/models/full/model.pickle",
+    "model_uri": "s3://prophetable/data/models/full/model.pickle",
     "holidays_input_uri": null,
     "holidays_output_uri": null,
     "delimiter": ",",

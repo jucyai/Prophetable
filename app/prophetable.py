@@ -235,20 +235,28 @@ class Prophetable:
         elif self._storages[name]['scheme'] == 's3':
             _, bucket, key = _split_s3_uri(getattr(self, name))
             if ftype == 'pickle':
-                raise ValueError('Saving model pickle to S3 is not supported yet')
+                S3Utils(aws_config=self._aws).get_s3_client().put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=pickle.dumps(obj)
+                )
             elif ftype == 'csv':
                 S3Utils(aws_config=self._aws).df_to_s3(obj, bucket, key, index=False)
 
     def load(self, name, ftype='csv'):
         if self._storages[name]['scheme'] == 'local':
             if ftype == 'pickle':
-                raise ValueError('Loading model pickle is not supported yet')
+                with open(getattr(self, name), 'rb') as f:
+                    return pickle.load(f)
             elif ftype == 'csv':
                 return pd.read_csv(getattr(self, name), sep=self.delimiter)
         elif self._storages[name]['scheme'] == 's3':
             _, bucket, key = _split_s3_uri(getattr(self, name))
             if ftype == 'pickle':
-                raise ValueError('Loading model pickle is not supported yet')
+                return pickle.loads(
+                    S3Utils(aws_config=self._aws).get_s3_client().get_object(bucket, key)['Body']\
+                        .read()
+                )
             elif ftype == 'csv':
                 return S3Utils(aws_config=self._aws).s3_to_df(bucket, key, index=False)
 

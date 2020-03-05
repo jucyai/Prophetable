@@ -3,7 +3,7 @@ import pandas as pd
 from prophetable import Prophetable
 
 
-p = Prophetable(config='data/config.full.json')
+p = Prophetable(config='data/config.s3.json')
 p.run()
 print(p.data[
     (
