@@ -50,5 +50,6 @@ docker rm pm
 
 ## TODO
 
+- Publish as package to use separately from docker
 - Seasonalities that depend on other factors
 - Additional regressors
