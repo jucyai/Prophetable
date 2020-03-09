@@ -9,10 +9,11 @@ RUN pip install pystan
 RUN pip install fbprophet
 RUN pip install redis
 RUN pip install red-panda
-RUN pip install prophetable
 
 RUN mkdir -p /home/project/pm
 WORKDIR /home/project/pm
 COPY . /home/project/pm
+
+RUN pip install -e .
 
 ENTRYPOINT [ "python", "docker/run.py" ]

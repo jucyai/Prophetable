@@ -3,7 +3,7 @@ import pandas as pd
 from prophetable import Prophetable
 
 
-p = Prophetable(config='data/config.cv.json')
+p = Prophetable(config='/data/config.full.json')
 p.run()
 print(p.data[
     (
@@ -17,8 +17,11 @@ print(p.forecast.tail())
 print(p._storages)
 print(p._aws)
 
-print(p.cv_data.head())
-print(p.cv_metrics.head())
+try:
+    print(p.cv_data.head())
+    print(p.cv_metrics.head())
+except:
+    print('No cv')
 
 try:
     print('Check seasonalities')

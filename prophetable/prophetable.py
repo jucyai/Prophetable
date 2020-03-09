@@ -229,6 +229,8 @@ class Prophetable:
         self.holidays_data = None
         self.model = None
         self.forecast = None
+        self.cv_data = None
+        self.cv_metrics = None
 
         ## Seed
         if self.random_seed is not None:
@@ -362,7 +364,8 @@ class Prophetable:
 
     def cross_validation(self):
         if self.cv is None:
-            raise ValueError('cv must be configured for cross validation')
+            logger.info('Cross validation not configured, skipping')
+            return None
         try :
             horizon = self._get_timedelta(self.cv['horizon'])
             period = self._get_timedelta(self.cv.get('period'))

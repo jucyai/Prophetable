@@ -6,14 +6,11 @@ from collections import OrderedDict
 from setuptools import setup, find_packages
 
 
-with io.open('README.rst', 'rt', encoding='utf8') as f:
-    readme = f.read()
-
 with io.open('prophetable/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
 
 setup(
-    name='red-panda',
+    name='prophetable',
     version=version,
     url='https://github.com/jucyai/prophetable',
     project_urls=OrderedDict((
@@ -24,7 +21,7 @@ setup(
     author='Jiachen Yao',
     maintainer='Jiachen Yao',
     description='Run Prophet forcasting models from config files.',
-    long_description=readme,
+    long_description='Run Prophet forcasting models from config files.',
     packages=find_packages(exclude=['tests', 'data', 'docker']),
     include_package_data=True,
     python_requires='>=3.6',
