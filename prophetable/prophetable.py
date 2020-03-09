@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import numpy as np
 import pandas as pd
 from fbprophet import Prophet
+from fbprophet.diagnostics import cross_validation, performance_metrics
 from red_panda.red_panda import S3Utils
 
 import logging
@@ -66,7 +67,7 @@ class Prophetable:
                 random_seed: Random seed for reproducibility.
                 country_holidays: Name of the country, like 'UnitedStates' or 'US'. Built-in country
                     holidays can only be set for a single country.
-                custom_seasonalities: list of dictionary including:
+                custom_seasonalities: A list of dictionary including:
                     name: string name of the seasonality component.
                     period: float number of days in one period.
                     fourier_order: int number of Fourier components to use.
@@ -74,6 +75,23 @@ class Prophetable:
                     mode: optional 'additive' or 'multiplicative'
                     condition_name: string name of the seasonality condition.
                 outliers: list of dates or date ranges (outliers) to remove from training.
+                cv:  A dictionary of cross validation configurations, will force `ts_frequency` if
+                    unit is not included in the string.
+                    horizon: string with pd.Timedelta compatible style, e.g., '5 days', '3 hours', 
+                        '10 seconds'.
+                    period: Not required, string with pd.Timedelta compatible style. Simulated 
+                        forecast will be  done at every this period. If not provided, 0.5 * horizon 
+                        is used.
+                    initial: Not required, string with pd.Timedelta compatible style. The first 
+                        training period will begin here. If not provided, 3 * horizon is used.
+                    rolling_window: Proportion of data to use in each rolling window for computing 
+                        the metrics. Should be in [0, 1] to average. If rolling_window < 0, then 
+                        metrics are computed at each datapoint with no averaging (i.e., 'mse' will 
+                        actually be squared error with no mean).
+                    metrics: one or more of ['mse', 'rmse', 'mae', 'mape', 'mdape', 'coverage'].
+                        Default None and use all.
+                cv_output_uri: save the cv forecast (csv), if provided.
+                cv_metrics_uri: save the performance metrics (csv), if provided.
 
             # Mapped directly from Prophet forecaster
                 growth: String 'linear' or 'logistic' to specify a linear or logistic trend.
@@ -120,6 +138,9 @@ class Prophetable:
                     and speed up the calculation. uncertainty intervals.
                 stan_backend: str as defined in StanBackendEnum default: None - will try to iterate 
                     over all available backends and find the working one
+                
+            # Prediction related
+                future_periods: number of future periods to predict
     """
     def __init__(self, config):
 
@@ -129,7 +150,9 @@ class Prophetable:
             'output_uri': {'required': False},
             'model_uri': {'required': False},
             'holidays_input_uri': {'required': False},
-            'holidays_output_uri': {'required': False}
+            'holidays_output_uri': {'required': False},
+            'cv_output_uri': {'required': False},
+            'cv_metrics_uri': {'required': False}
         }
 
         with open(config, 'r') as f:
@@ -172,6 +195,7 @@ class Prophetable:
         self._get_config('country_holidays', default=None, required=False, type_check=[str])
         self._get_config('custom_seasonalities', default=None, required=False, type_check=[list])
         self._get_config('outliers', default=None, required=False, type_check=[list])
+        self._get_config('cv', default=None, required=False, type_check=[dict])
 
         ## Mapped directly for Prophet
         self._get_config('growth', default='linear', required=False, type_check=[str])
@@ -214,7 +238,7 @@ class Prophetable:
         try:
             set_attr = self._config[attr]
             if type_check is not None and set_attr is not None:
-                if not any([isinstance(set_attr, t) for t in type_check]):
+                if not isinstance(set_attr, tuple(type_check)):
                     raise TypeError(f'{attr} provided is not {type_check}')
         except KeyError:
             if required:
@@ -223,6 +247,13 @@ class Prophetable:
                 set_attr = default
         setattr(self, attr, set_attr)
         logger.info(f'{attr} set to {set_attr}')
+
+
+    def _get_timedelta(self, time_str):
+        if isinstance(time_str, (float, int)):
+            return pd.to_timedelta(time_str, unit=self.ts_frequency)
+        else:
+            return time_str
 
     def save(self, obj, name, ftype='csv'):
         if self._storages[name]['scheme'] == 'local':
@@ -235,20 +266,28 @@ class Prophetable:
         elif self._storages[name]['scheme'] == 's3':
             _, bucket, key = _split_s3_uri(getattr(self, name))
             if ftype == 'pickle':
-                raise ValueError('Saving model pickle to S3 is not supported yet')
+                S3Utils(aws_config=self._aws).get_s3_client().put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=pickle.dumps(obj)
+                )
             elif ftype == 'csv':
                 S3Utils(aws_config=self._aws).df_to_s3(obj, bucket, key, index=False)
 
     def load(self, name, ftype='csv'):
         if self._storages[name]['scheme'] == 'local':
             if ftype == 'pickle':
-                raise ValueError('Loading model pickle is not supported yet')
+                with open(getattr(self, name), 'rb') as f:
+                    return pickle.load(f)
             elif ftype == 'csv':
                 return pd.read_csv(getattr(self, name), sep=self.delimiter)
         elif self._storages[name]['scheme'] == 's3':
             _, bucket, key = _split_s3_uri(getattr(self, name))
             if ftype == 'pickle':
-                raise ValueError('Loading model pickle is not supported yet')
+                return pickle.loads(
+                    S3Utils(aws_config=self._aws).get_s3_client().get_object(bucket, key)['Body']\
+                        .read()
+                )
             elif ftype == 'csv':
                 return S3Utils(aws_config=self._aws).s3_to_df(bucket, key, index=False)
 
@@ -321,6 +360,33 @@ class Prophetable:
             logger.info(f'Training data saved to {self.train_uri}')
         self.data = model_data
 
+    def cross_validation(self):
+        if self.cv is None:
+            raise ValueError('cv must be configured for cross validation')
+        try :
+            horizon = self._get_timedelta(self.cv['horizon'])
+            period = self._get_timedelta(self.cv.get('period'))
+            initial = self._get_timedelta(self.cv.get('initial'))
+        except KeyError:
+            raise ValueError('Horizon is the required config for cross validation')
+        self.cv_data = cross_validation(
+            self.model,
+            horizon=horizon,
+            period=period,
+            initial=initial
+        )
+        if self.cv_output_uri is not None:
+            self.save(self.cv_data, 'cv_output_uri')
+            logger.info(f'Cross validation data saved to {self.cv_output_uri}')
+        rolling_window = self.cv.get('rolling_window') or 0.1
+        metrics = self.cv.get('metrics')
+        self.cv_metrics = performance_metrics(
+            self.cv_data, rolling_window=rolling_window, metrics=metrics
+        )
+        if self.cv_metrics_uri is not None:
+            self.save(self.cv_metrics, 'cv_metrics_uri')
+            logger.info(f'Cross validation metrics saved to {self.cv_metrics_uri}')
+
     def train(self):
         """Method to train Prophet forecaster
         """
@@ -386,4 +452,5 @@ class Prophetable:
         self.make_holidays_data()
         self.make_data()
         self.train()
+        self.cross_validation()
         self.predict()

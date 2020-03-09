@@ -18,6 +18,7 @@
     "country_holidays": null,
     "custom_seasonalities": null,
     "outliers": null,
+    "cv": null,
     "growth": "linear",
     "changepoints": null,
     "n_changepoints": 25,
