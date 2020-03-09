@@ -1,7 +1,6 @@
-import sys
+# import sys
 import pandas as pd
 from prophetable import Prophetable
-
 
 p = Prophetable(config='/data/config.full.json')
 p.run()
@@ -44,3 +43,6 @@ try:
     )
 except:
     print('No custom holidays')
+
+# p_min = Prophetable(config={'data_uri': '/data/example_wp_log_peyton_manning.csv'})
+# p_min.run()
