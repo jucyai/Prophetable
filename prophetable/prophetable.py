@@ -155,8 +155,11 @@ class Prophetable:
             'cv_metrics_uri': {'required': False}
         }
 
-        with open(config, 'r') as f:
-            self._config = json.load(f)
+        if isinstance(config, dict):
+            self._config = config
+        else:
+            with open(config, 'r') as f:
+                self._config = json.load(f)
 
         ## File uri
         for attr, setting in self._storages.items():
