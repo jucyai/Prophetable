@@ -1,6 +1,6 @@
 # Prophetable
 
-    Define and run Prophet forecasting models using a configuration file.
+Define and run Prophet forecasting models using a configuration file.
 
 `Prophet` is a python library from Facebook for forecasting time series data. Using `Prophetable`,
 you can define a forecasting model by specifying parameters in a configurations file (`json`) or a
@@ -8,7 +8,9 @@ config object (`dict`).
 
 ## Configuring a model
 
-Example data and configuration files include in the `data` directory of this project.
+Example data and configuration files include in the `data` directory of this project. See
+[here](https://github.com/jucyai/prophetable/blob/master/doc/configurations.md) for a full list of
+configurations and their descriptions.
 
 A minimal configuration looks like this:
 
