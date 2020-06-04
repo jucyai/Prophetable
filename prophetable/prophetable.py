@@ -22,8 +22,9 @@ def _create_parent_dir(full):
     """Creates parent path given a full uri"""
     dir_parts = pathlib.PurePath(full).parts[:-1]
     if len(dir_parts) > 0:
-        pathlib.Path(*dir_parts).mkdir(parents=True, exist_ok=True)
-        logger.info(f'Created path {pathlib.Path(*dir_parts)}')
+        path = pathlib.Path(*dir_parts)
+        path.mkdir(parents=True, exist_ok=True)
+        logger.info(f'Created path {path}')
 
 
 def _split_s3_uri(uri):

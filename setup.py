@@ -39,6 +39,12 @@ setup(
         'redis',
         'red-panda'
     ],
+    extras_require={
+        'dev': [
+            'pytest',
+            'tox'
+        ],
+    },
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

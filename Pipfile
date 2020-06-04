@@ -5,6 +5,16 @@ verify_ssl = true
 
 [dev-packages]
 twine = "*"
+pytest = "*"
+tox = "*"
+numpy = "*"
+pandas = "*"
+cython = "*"
+matplotlib = "*"
+pystan = "*"
+fbprophet = "*"
+redis = "*"
+red-panda = "*"
 
 [packages]
 

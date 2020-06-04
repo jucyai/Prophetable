@@ -127,6 +127,12 @@ docker stop pm
 docker rm pm
 ```
 
+### Developing and Testing
+
+```sh
+pipenv run tox
+```
+
 ## TODO
 
 - Add advanced config for seasonalities that depend on other factors.
