@@ -9,6 +9,9 @@ from setuptools import setup, find_packages
 with io.open('prophetable/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
 
+with open('README.md') as f:
+    readme = f.read()
+
 setup(
     name='prophetable',
     version=version,
@@ -21,7 +24,8 @@ setup(
     author='Jiachen Yao',
     maintainer='Jiachen Yao',
     description='Run Prophet forcasting models from config files.',
-    long_description='Run Prophet forcasting models from config files.',
+    long_description_content_type='text/markdown',
+    long_description=readme,
     packages=find_packages(exclude=['tests', 'data', 'docker']),
     include_package_data=True,
     python_requires='>=3.6',
