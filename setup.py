@@ -6,52 +6,48 @@ from collections import OrderedDict
 from setuptools import setup, find_packages
 
 
-with io.open('prophetable/__init__.py', 'rt', encoding='utf8') as f:
-    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
+with io.open("prophetable/__init__.py", "rt", encoding="utf8") as f:
+    version = re.search(r"__version__ = \'(.*?)\'", f.read()).group(1)
 
-with open('README.md') as f:
+with open("README.md") as f:
     readme = f.read()
 
 setup(
-    name='prophetable',
+    name="prophetable",
     version=version,
-    url='https://github.com/jucyai/prophetable',
-    project_urls=OrderedDict((
-        ('Code', 'https://github.com/jucyai/prophetable'),
-        ('Issue tracker', 'https://github.com/jucyai/prophetable/issues'),
-    )),
-    license='MIT',
-    author='Jiachen Yao',
-    maintainer='Jiachen Yao',
-    description='Run Prophet forcasting models from config files.',
-    long_description_content_type='text/markdown',
+    url="https://github.com/jucyai/prophetable",
+    project_urls=OrderedDict(
+        (
+            ("Code", "https://github.com/jucyai/prophetable"),
+            ("Issue tracker", "https://github.com/jucyai/prophetable/issues"),
+        )
+    ),
+    license="MIT",
+    author="Jiachen Yao",
+    maintainer="Jiachen Yao",
+    description="Run Prophet forcasting models from config files.",
+    long_description_content_type="text/markdown",
     long_description=readme,
-    packages=find_packages(exclude=['tests', 'data', 'docker']),
+    packages=find_packages(include=["prophetable"]),
     include_package_data=True,
-    python_requires='>=3.6',
+    python_requires=">=3.6",
     install_requires=[
-        'cython',
-        'numpy',
-        'pandas',
-        'matplotlib',
-        'pystan',
-        'fbprophet',
-        'redis',
-        'red-panda'
+        "numpy",
+        "pandas",
+        "matplotlib",
+        "cython",
+        "pystan",
+        "fbprophet",
+        "red-panda>=1.0.0b1",
     ],
-    extras_require={
-        'dev': [
-            'pytest',
-            'tox'
-        ],
-    },
+    extras_require={"dev": ["pytest", "tox"],},
     classifiers=[
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-    ]
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
 )

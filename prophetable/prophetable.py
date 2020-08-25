@@ -3,6 +3,7 @@ import json
 import pickle
 import pathlib
 from urllib.parse import urlparse
+from typing import Tuple, Dict, Union
 
 import numpy as np
 import pandas as pd
@@ -13,41 +14,31 @@ from red_panda.red_panda import S3Utils
 import logging
 
 
-log_format = 'Prophetable | %(asctime)s | %(name)s | %(levelname)s | %(message)s'
+log_format = "🔮Prophetable | %(asctime)s | %(name)s | %(levelname)s | %(message)s"
 logging.basicConfig(level=logging.INFO, format=log_format)
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
-def _create_parent_dir(full):
-    """Creates parent path given a full uri"""
+def _create_parent_dir(full: str):
+    """Creates parent path given a full uri."""
     dir_parts = pathlib.PurePath(full).parts[:-1]
     if len(dir_parts) > 0:
         path = pathlib.Path(*dir_parts)
         path.mkdir(parents=True, exist_ok=True)
-        logger.info(f'Created path {path}')
+        LOGGER.info(f"Created path: {path}")
 
 
-def _split_s3_uri(uri):
-    """Get S3, bucket, key from uri
-
-    # Returns
-        A tuple of ('s3', bucket, key)
-    """
+def _split_s3_uri(uri: str) -> Tuple[str, str, str]:
+    """Get S3, bucket, key from uri."""
     parsed = urlparse(uri, allow_fragments=False)
-    logger.info(f'Parsing {uri}')
-    return (
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path.lstrip('/')
-    )
+    return (parsed.scheme, parsed.netloc, parsed.path.lstrip("/"))
 
 
 class Prophetable:
-    """Wrapping fbprophet.Prophet
+    """Wrapping `fbprophet.Prophet`.
 
-    # Arguments:
-
-        config: Config file URI
+    Args:
+        config: Config file or `dict`.
             # Prophetable config:
                 # File related
                 data_uri: URI for input data, required.
@@ -143,90 +134,122 @@ class Prophetable:
             # Prediction related
                 future_periods: number of future periods to predict
     """
-    def __init__(self, config):
 
-        self._storages = {
-            'data_uri': {'required': True},
-            'train_uri': {'required': False},
-            'output_uri': {'required': False},
-            'model_uri': {'required': False},
-            'holidays_input_uri': {'required': False},
-            'holidays_output_uri': {'required': False},
-            'cv_output_uri': {'required': False},
-            'cv_metrics_uri': {'required': False}
+    def __init__(self, config: Union[str, dict]):
+
+        self._storages: Dict[str, Dict[str, Union[bool, str]]] = {
+            "data_uri": {"required": True},
+            "train_uri": {"required": False},
+            "output_uri": {"required": False},
+            "model_uri": {"required": False},
+            "holidays_input_uri": {"required": False},
+            "holidays_output_uri": {"required": False},
+            "cv_output_uri": {"required": False},
+            "cv_metrics_uri": {"required": False},
         }
 
         if isinstance(config, dict):
             self._config = config
         else:
-            with open(config, 'r') as f:
+            with open(config, "r") as f:
                 self._config = json.load(f)
 
         ## File uri
         for attr, setting in self._storages.items():
             # Set class property
-            self._get_config(attr, required=setting['required'])
+            self._get_config(attr, required=setting["required"])
             # Identify storage scheme
             uri = getattr(self, attr)
             if uri is not None:
                 scheme, _, _ = _split_s3_uri(uri)
-                self._storages[attr]['scheme'] = scheme if scheme != '' else 'local'
+                self._storages[attr]["scheme"] = scheme if scheme != "" else "local"
 
         self._aws = {
-            'aws_access_key_id': os.environ.get('AWS_ACCESS_KEY_ID'),
-            'aws_secret_access_key': os.environ.get('AWS_SECRET_ACCESS_KEY')
+            "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
+            "aws_secret_access_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
         }
 
         ## Other file related config
-        self._get_config('delimiter', default=',', required=False)
+        self._get_config("delimiter", default=",", required=False)
 
         ## Model related config
-        self._get_config('ds', default='ds', required=False)
-        self._get_config('y', default='y', required=False)
-        self._get_config('ts_frequency', default='D', required=False)
+        self._get_config("ds", default="ds", required=False)
+        self._get_config("y", default="y", required=False)
+        self._get_config("ts_frequency", default="D", required=False)
         # Modified in make_data()
-        self._get_config('min_train_date', default=None, required=False) 
+        self._get_config("min_train_date", default=None, required=False)
         # Modified in make_data()
-        self._get_config('max_train_date', default=None, required=False)
-        self._get_config('saturating_min', default=None, required=False, type_check=[int, float])
-        self._get_config('saturating_max', default=None, required=False, type_check=[int, float])
+        self._get_config("max_train_date", default=None, required=False)
+        self._get_config(
+            "saturating_min", default=None, required=False, type_check=[int, float]
+        )
+        self._get_config(
+            "saturating_max", default=None, required=False, type_check=[int, float]
+        )
         # Set the default na_fill to None
         # https://facebook.github.io/prophet/docs/outliers.html
         # Prophet has no problem with missing data. If you set their values to NA in the history but
         # leave the dates in future, then Prophet will give you a prediction for their values.
-        self._get_config('na_fill', default=None, required=False, type_check=[int, float])
-        self._get_config('random_seed', default=None, required=False, type_check=[int])
-        self._get_config('country_holidays', default=None, required=False, type_check=[str])
-        self._get_config('custom_seasonalities', default=None, required=False, type_check=[list])
-        self._get_config('outliers', default=None, required=False, type_check=[list])
-        self._get_config('cv', default=None, required=False, type_check=[dict])
+        self._get_config(
+            "na_fill", default=None, required=False, type_check=[int, float]
+        )
+        self._get_config("random_seed", default=None, required=False, type_check=[int])
+        self._get_config(
+            "country_holidays", default=None, required=False, type_check=[str]
+        )
+        self._get_config(
+            "custom_seasonalities", default=None, required=False, type_check=[list]
+        )
+        self._get_config("outliers", default=None, required=False, type_check=[list])
+        self._get_config("cv", default=None, required=False, type_check=[dict])
 
         ## Mapped directly for Prophet
-        self._get_config('growth', default='linear', required=False, type_check=[str])
-        self._get_config('changepoints', default=None, required=False, type_check=[list])
-        self._get_config('n_changepoints', default=25, required=False, type_check=[int])
-        self._get_config('changepoint_range', default=0.8, required=False, type_check=[float, int])
-        self._get_config('yearly_seasonality', default='auto', required=False)
-        self._get_config('weekly_seasonality', default='auto', required=False)
-        self._get_config('daily_seasonality', default='auto', required=False)
-        self._get_config('holidays', default=None, required=False, type_check=[list])
-        self._get_config('seasonality_mode', default='additive', required=False, type_check=[str])
+        self._get_config("growth", default="linear", required=False, type_check=[str])
         self._get_config(
-            'seasonality_prior_scale', default=10.0, required=False, type_check=[float, int]
+            "changepoints", default=None, required=False, type_check=[list]
+        )
+        self._get_config("n_changepoints", default=25, required=False, type_check=[int])
+        self._get_config(
+            "changepoint_range", default=0.8, required=False, type_check=[float, int]
+        )
+        self._get_config("yearly_seasonality", default="auto", required=False)
+        self._get_config("weekly_seasonality", default="auto", required=False)
+        self._get_config("daily_seasonality", default="auto", required=False)
+        self._get_config("holidays", default=None, required=False, type_check=[list])
+        self._get_config(
+            "seasonality_mode", default="additive", required=False, type_check=[str]
         )
         self._get_config(
-            'holidays_prior_scale', default=10.0, required=False, type_check=[float, int]
+            "seasonality_prior_scale",
+            default=10.0,
+            required=False,
+            type_check=[float, int],
         )
         self._get_config(
-            'changepoint_prior_scale', default=0.05, required=False, type_check=[float, int]
+            "holidays_prior_scale",
+            default=10.0,
+            required=False,
+            type_check=[float, int],
         )
-        self._get_config('mcmc_samples', default=0, required=False, type_check=[int])
-        self._get_config('interval_width', default=0.8, required=False, type_check=[float])
-        self._get_config('uncertainty_samples', default=1000, required=False, type_check=[int])
-        self._get_config('stan_backend', default=None, required=False, type_check=[str])
+        self._get_config(
+            "changepoint_prior_scale",
+            default=0.05,
+            required=False,
+            type_check=[float, int],
+        )
+        self._get_config("mcmc_samples", default=0, required=False, type_check=[int])
+        self._get_config(
+            "interval_width", default=0.8, required=False, type_check=[float]
+        )
+        self._get_config(
+            "uncertainty_samples", default=1000, required=False, type_check=[int]
+        )
+        self._get_config("stan_backend", default=None, required=False, type_check=[str])
 
         ## Prediction
-        self._get_config('future_periods', default=365, required=False, type_check=[int])
+        self._get_config(
+            "future_periods", default=365, required=False, type_check=[int]
+        )
 
         ## Placeholder for other attributes set later
         self.data = None
@@ -240,159 +263,171 @@ class Prophetable:
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
 
+    def __getattr__(self, attr):
+        return None
+
     def _get_config(self, attr, required=True, default=None, type_check=None):
         try:
             set_attr = self._config[attr]
             if type_check is not None and set_attr is not None:
                 if not isinstance(set_attr, tuple(type_check)):
-                    raise TypeError(f'{attr} provided is not {type_check}')
+                    raise TypeError(f"{attr} provided is not {type_check}")
         except KeyError:
             if required:
-                raise ValueError(f'{attr} must be provided in config')
-            else:       
+                raise ValueError(f"{attr} must be provided in config")
+            else:
                 set_attr = default
         setattr(self, attr, set_attr)
-        logger.info(f'{attr} set to {set_attr}')
-
+        LOGGER.info(f"{attr} set to {set_attr}")
 
     def _get_timedelta(self, time_str):
         if isinstance(time_str, (float, int)):
-            return pd.to_timedelta(time_str, unit=self.ts_frequency)
+            return pd.to_timedelta(time_str, unit=self.ts_frequency or "ns")
         else:
             return time_str
 
-    def save(self, obj, name, ftype='csv'):
-        if self._storages[name]['scheme'] == 'local':
+    def save(self, obj, name, ftype="csv"):
+        if self._storages[name]["scheme"] == "local":
             _create_parent_dir(getattr(self, name))
-            if ftype == 'pickle':
-                with open(getattr(self, name), 'wb') as f:
+            if ftype == "pickle":
+                with open(getattr(self, name), "wb") as f:
                     pickle.dump(obj, f)
-            elif ftype == 'csv':
+            elif ftype == "csv":
                 obj.to_csv(getattr(self, name), index=False)
-        elif self._storages[name]['scheme'] == 's3':
+        elif self._storages[name]["scheme"] == "s3":
             _, bucket, key = _split_s3_uri(getattr(self, name))
-            if ftype == 'pickle':
+            if ftype == "pickle":
                 S3Utils(aws_config=self._aws).get_s3_client().put_object(
-                    Bucket=bucket,
-                    Key=key,
-                    Body=pickle.dumps(obj)
+                    Bucket=bucket, Key=key, Body=pickle.dumps(obj)
                 )
-            elif ftype == 'csv':
+            elif ftype == "csv":
                 S3Utils(aws_config=self._aws).df_to_s3(obj, bucket, key, index=False)
 
-    def load(self, name, ftype='csv'):
-        if self._storages[name]['scheme'] == 'local':
-            if ftype == 'pickle':
-                with open(getattr(self, name), 'rb') as f:
+    def load(self, name, ftype="csv"):
+        if self._storages[name]["scheme"] == "local":
+            if ftype == "pickle":
+                with open(getattr(self, name), "rb") as f:
                     return pickle.load(f)
-            elif ftype == 'csv':
-                return pd.read_csv(getattr(self, name), sep=self.delimiter)
-        elif self._storages[name]['scheme'] == 's3':
+            elif ftype == "csv":
+                return pd.read_csv(getattr(self, name), sep=self.delimiter or ",")
+        elif self._storages[name]["scheme"] == "s3":
             _, bucket, key = _split_s3_uri(getattr(self, name))
-            if ftype == 'pickle':
+            if ftype == "pickle":
                 return pickle.loads(
-                    S3Utils(aws_config=self._aws).get_s3_client().get_object(bucket, key)['Body']\
-                        .read()
+                    S3Utils(aws_config=self._aws)
+                    .get_s3_client()
+                    .get_object(bucket, key)["Body"]
+                    .read()
                 )
-            elif ftype == 'csv':
+            elif ftype == "csv":
                 return S3Utils(aws_config=self._aws).s3_to_df(bucket, key, index=False)
 
     def make_holidays_data(self):
         if self.holidays_input_uri is not None:
-            self.holidays_data = self.load('holidays_input_uri')
-            logger.info(f'Add custom holidays from {self.holidays_input_uri}')
+            self.holidays_data = self.load("holidays_input_uri")
+            LOGGER.info(f"Add custom holidays from {self.holidays_input_uri}")
         else:
             if self.holidays is not None:
                 holidays = self.holidays
                 for i, h in enumerate(holidays):
-                    holidays[i]['ds'] = pd.to_datetime(h['ds'])
+                    holidays[i]["ds"] = pd.to_datetime(h["ds"])
                     holidays[i] = pd.DataFrame(holidays[i])
                 self.holidays_data = pd.concat(holidays)
-                logger.info(f'Add custom holidays {self.holidays}')
+                LOGGER.info(f"Add custom holidays {self.holidays}")
         if self.holidays_output_uri is not None:
             if self.holidays_data is not None:
-                self.save(self.holidays_data, 'holidays_output_uri')
-                logger.info(f'Holidays data saved to {self.holidays_output_uri}')
+                self.save(self.holidays_data, "holidays_output_uri")
+                LOGGER.info(f"Holidays data saved to {self.holidays_output_uri}")
             else:
-                logger.warn(f'No holidays data to save')
+                LOGGER.warning(f"No holidays data to save")
 
     def make_data(self):
-        self.data = self.load('data_uri')
-        self.data[self.ds] = pd.to_datetime(self.data[self.ds], infer_datetime_format=True)
-        if self.min_train_date is None:
-           self.min_train_date =  self.data[self.ds].min()
-        if self.max_train_date is None:
-           self.max_train_date =  self.data[self.ds].max()
-        model_data = pd.DataFrame({
-            'ds': pd.date_range(self.min_train_date, self.max_train_date, freq=self.ts_frequency)
-        })
-        model_data = model_data.merge(
-            self.data[[self.ds, self.y]], left_on='ds', right_on=self.ds, how='left'
+        self.data = self.load("data_uri")
+        self.data[self.ds] = pd.to_datetime(
+            self.data[self.ds], infer_datetime_format=True
         )
-        if self.ds != 'ds':
+        if self.min_train_date is None:
+            self.min_train_date = self.data[self.ds].min()
+        if self.max_train_date is None:
+            self.max_train_date = self.data[self.ds].max()
+        model_data = pd.DataFrame(
+            {
+                "ds": pd.date_range(
+                    self.min_train_date, self.max_train_date, freq=self.ts_frequency
+                )
+            }
+        )
+        model_data = model_data.merge(
+            self.data[[self.ds, self.y]], left_on="ds", right_on=self.ds, how="left"
+        )
+        if self.ds != "ds":
             model_data = model_data.drop(columns=[self.ds])
-        model_data = model_data.rename(columns={self.y: 'y'})
-        
+        model_data = model_data.rename(columns={self.y: "y"})
+
         # TODO: More ways to handle missing data
         if self.na_fill is not None:
             model_data = model_data.fillna(self.na_fill)
-        
+
         # Additional data processing instructed in config
         if self.saturating_min is not None:
-            model_data['floor'] = self.saturating_min
+            model_data["floor"] = self.saturating_min
         if self.saturating_max is not None:
-            model_data['cap'] = self.saturating_max
+            model_data["cap"] = self.saturating_max
         if self.outliers is not None:
             for o in self.outliers:
                 if isinstance(o, list):
                     if len(o) != 2:
-                        raise ValueError(f'Length of data range config in outliers should be 2')
+                        raise ValueError(
+                            f"Length of data range config in outliers should be 2"
+                        )
                     start, end = o
                     model_data.loc[
                         (
-                            model_data['ds'] >= pd.to_datetime(start, infer_datetime_format=True)
-                        ) & (
-                            model_data['ds'] <= pd.to_datetime(end, infer_datetime_format=True)
+                            model_data["ds"]
+                            >= pd.to_datetime(start, infer_datetime_format=True)
+                        )
+                        & (
+                            model_data["ds"]
+                            <= pd.to_datetime(end, infer_datetime_format=True)
                         ),
-                        'y'
+                        "y",
                     ] = None
                 else:
                     model_data.loc[
-                        model_data['ds'] == pd.to_datetime(o, infer_datetime_format=True), 'y'
+                        model_data["ds"]
+                        == pd.to_datetime(o, infer_datetime_format=True),
+                        "y",
                     ] = None
-        
+
         if self.train_uri is not None:
-            self.save(model_data, 'train_uri')
-            logger.info(f'Training data saved to {self.train_uri}')
+            self.save(model_data, "train_uri")
+            LOGGER.info(f"Training data saved to {self.train_uri}")
         self.data = model_data
 
     def cross_validation(self):
         if self.cv is None:
-            logger.info('Cross validation not configured, skipping')
+            LOGGER.info("Cross validation not configured, skipping")
             return None
-        try :
-            horizon = self._get_timedelta(self.cv['horizon'])
-            period = self._get_timedelta(self.cv.get('period'))
-            initial = self._get_timedelta(self.cv.get('initial'))
+        try:
+            horizon = self._get_timedelta(self.cv["horizon"])
+            period = self._get_timedelta(self.cv.get("period"))
+            initial = self._get_timedelta(self.cv.get("initial"))
         except KeyError:
-            raise ValueError('Horizon is the required config for cross validation')
+            raise ValueError("Horizon is the required config for cross validation")
         self.cv_data = cross_validation(
-            self.model,
-            horizon=horizon,
-            period=period,
-            initial=initial
+            self.model, horizon=horizon, period=period, initial=initial
         )
         if self.cv_output_uri is not None:
-            self.save(self.cv_data, 'cv_output_uri')
-            logger.info(f'Cross validation data saved to {self.cv_output_uri}')
-        rolling_window = self.cv.get('rolling_window') or 0.1
-        metrics = self.cv.get('metrics')
+            self.save(self.cv_data, "cv_output_uri")
+            LOGGER.info(f"Cross validation data saved to {self.cv_output_uri}")
+        rolling_window = self.cv.get("rolling_window") or 0.1
+        metrics = self.cv.get("metrics")
         self.cv_metrics = performance_metrics(
             self.cv_data, rolling_window=rolling_window, metrics=metrics
         )
         if self.cv_metrics_uri is not None:
-            self.save(self.cv_metrics, 'cv_metrics_uri')
-            logger.info(f'Cross validation metrics saved to {self.cv_metrics_uri}')
+            self.save(self.cv_metrics, "cv_metrics_uri")
+            LOGGER.info(f"Cross validation metrics saved to {self.cv_metrics_uri}")
 
     def train(self):
         """Method to train Prophet forecaster
@@ -414,45 +449,42 @@ class Prophetable:
             mcmc_samples=self.mcmc_samples,
             interval_width=self.interval_width,
             uncertainty_samples=self.uncertainty_samples,
-            stan_backend=self.stan_backend
+            stan_backend=self.stan_backend,
         )
 
         if self.country_holidays is not None:
             model.add_country_holidays(country_name=self.country_holidays)
-            logger.info(f'Add built-in country holidays {self.country_holidays}')
+            LOGGER.info(f"Add built-in country holidays {self.country_holidays}")
 
         if self.custom_seasonalities is not None:
             kwargs = [
-                'name',
-                'period',
-                'fourier_order',
-                'prior_scale',
-                'mode',
-                'condition_name'
+                "name",
+                "period",
+                "fourier_order",
+                "prior_scale",
+                "mode",
+                "condition_name",
             ]
             for s in self.custom_seasonalities:
-                model.add_seasonality(**{
-                    k: v for k, v in s.items() if k in kwargs
-                })
-            logger.info(f'Add custom seasonalities {self.custom_seasonalities}')
+                model.add_seasonality(**{k: v for k, v in s.items() if k in kwargs})
+            LOGGER.info(f"Add custom seasonalities {self.custom_seasonalities}")
 
         model.fit(self.data)
 
         if self.model_uri is not None:
-            self.save(model, 'model_uri', ftype='pickle')
-            logger.info(f'Model object saved to {self.model_uri}')
+            self.save(model, "model_uri", ftype="pickle")
+            LOGGER.info(f"Model object saved to {self.model_uri}")
 
         self.model = model
 
     def predict(self):
         future = self.model.make_future_dataframe(
-            periods=self.future_periods,
-            freq=self.ts_frequency
+            periods=self.future_periods, freq=self.ts_frequency
         )
         forecast = self.model.predict(future)
         if self.output_uri is not None:
-            self.save(forecast, 'output_uri')
-            logger.info(f'Forecast output saved to {self.output_uri}')
+            self.save(forecast, "output_uri")
+            LOGGER.info(f"Forecast output saved to {self.output_uri}")
         self.forecast = forecast
 
     def run(self):
