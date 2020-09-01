@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 
 with io.open("prophetable/__init__.py", "rt", encoding="utf8") as f:
-    version = re.search(r"__version__ = \'(.*?)\'", f.read()).group(1)
+    version = re.search(r"__version__ = \"(.*?)\"", f.read()).group(1)
 
 with open("README.md") as f:
     readme = f.read()
@@ -40,7 +40,6 @@ setup(
         "fbprophet",
         "red-panda>=1.0.0b1",
     ],
-    extras_require={"dev": ["pytest", "tox"],},
     classifiers=[
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
