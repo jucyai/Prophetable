@@ -3,7 +3,7 @@ import json
 import pickle
 import pathlib
 from urllib.parse import urlparse
-from typing import Optional, Tuple, Dict, Union
+from typing import Tuple, Dict, Union
 
 import numpy as np
 import pandas as pd

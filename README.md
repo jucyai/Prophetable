@@ -2,7 +2,7 @@
 
 ![image](https://raw.githubusercontent.com/jucyai/prophetable/dev/prophetable.png)
 
-Define and run Prophet forecasting models using a configuration file.
+Define and run Prophet forecasting models using just a configuration file.
 
 `Prophet` is a python library from Facebook for forecasting time series data. Using `Prophetable`,
 you can define a forecasting model by specifying parameters in a configurations file (`json`) or a
@@ -10,17 +10,17 @@ config object (`dict`).
 
 ## Configuring a model
 
-Example data and configuration files include in the `data` directory of this project. See
-[here](https://github.com/jucyai/prophetable/blob/master/doc/configurations.md) for a full list of
+Example data and configuration files are include in the `data` directory of this project. See
+[configurations](https://github.com/jucyai/prophetable/blob/master/doc/configurations.md) for a full list of
 configurations and their descriptions.
 
 A minimal configuration looks like this:
 
-In `data/config.minimal.json`:
+In a `data/config.minimal.json` file:
 
 ```json
 {
-    "data_uri": "/data/example_wp_log_peyton_manning.csv"
+  "data_uri": "/data/example_wp_log_peyton_manning.csv"
 }
 ```
 
@@ -36,42 +36,42 @@ Full list of configurations:
 
 ```json
 {
-    "data_uri": "/data/example_wp_log_peyton_manning.csv",
-    "train_uri": "/data/models/full/train.csv",
-    "output_uri": "/data/models/full/output.csv",
-    "model_uri": "/data/models/full/model.pickle",
-    "holidays_input_uri": null,
-    "holidays_output_uri": null,
-    "delimiter": ",",
-    "ds": "ds",
-    "y": "y",
-    "ts_frequency": "D",
-    "min_train_date": null,
-    "max_train_date": null,
-    "saturating_min": null,
-    "saturating_max": null,
-    "na_fill": null,
-    "random_seed": 1234,
-    "country_holidays": null,
-    "custom_seasonalities": null,
-    "outliers": null,
-    "cv": null,
-    "growth": "linear",
-    "changepoints": null,
-    "n_changepoints": 25,
-    "changepoint_range": 0.8,
-    "yearly_seasonality": "auto",
-    "weekly_seasonality": "auto",
-    "daily_seasonality": "auto",
-    "holidays": null,
-    "seasonality_mode": "additive",
-    "seasonality_prior_scale": 10.0,
-    "holidays_prior_scale": 10.0,
-    "changepoint_prior_scale": 0.05,
-    "mcmc_samples": 0,
-    "interval_width": 0.8,
-    "uncertainty_samples": 1000,
-    "stan_backend": null
+  "data_uri": "/data/example_wp_log_peyton_manning.csv",
+  "train_uri": "/data/models/full/train.csv",
+  "output_uri": "/data/models/full/output.csv",
+  "model_uri": "/data/models/full/model.pickle",
+  "holidays_input_uri": null,
+  "holidays_output_uri": null,
+  "delimiter": ",",
+  "ds": "ds",
+  "y": "y",
+  "ts_frequency": "D",
+  "min_train_date": null,
+  "max_train_date": null,
+  "saturating_min": null,
+  "saturating_max": null,
+  "na_fill": null,
+  "random_seed": 1234,
+  "country_holidays": null,
+  "custom_seasonalities": null,
+  "outliers": null,
+  "cv": null,
+  "growth": "linear",
+  "changepoints": null,
+  "n_changepoints": 25,
+  "changepoint_range": 0.8,
+  "yearly_seasonality": "auto",
+  "weekly_seasonality": "auto",
+  "daily_seasonality": "auto",
+  "holidays": null,
+  "seasonality_mode": "additive",
+  "seasonality_prior_scale": 10.0,
+  "holidays_prior_scale": 10.0,
+  "changepoint_prior_scale": 0.05,
+  "mcmc_samples": 0,
+  "interval_width": 0.8,
+  "uncertainty_samples": 1000,
+  "stan_backend": null
 }
 ```
 
@@ -88,8 +88,9 @@ pip install prophetable
 ```python
 from prophetable import Prophetable
 
+# reading from a json file
 p = Prophetable(config='/data/config.minimal.json')
-# or
+# or a config dictionary
 p = Prophetable(config={'data_uri': '/data/example_wp_log_peyton_manning.csv'})
 
 p.run()
@@ -104,6 +105,9 @@ Using the setup in this project, you can either use the released version on `pyp
 Example usage `docker-run.sh`:
 
 ```sh
+# git clone https://github.com/jucyai/prophetable.git
+# cd prophetable
+
 export $(egrep -v '^#' .env | xargs)
 
 docker build --tag prophetable --file docker/Dockerfile.dev . && \
@@ -131,9 +135,7 @@ docker rm pm
 
 ### Developing and Testing
 
-```sh
-pipenv run tox
-```
+See `DEVELOPMENT.md` for details.
 
 ## TODO
 

@@ -25,7 +25,7 @@ setup(
     license="MIT",
     author="Jiachen Yao",
     maintainer="Jiachen Yao",
-    description="Run Prophet forcasting models from config files.",
+    description="Define and run Prophet forecasting models using just a configuration file.",
     long_description_content_type="text/markdown",
     long_description=readme,
     packages=find_packages(include=["prophetable"]),
