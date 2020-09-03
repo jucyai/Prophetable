@@ -1,5 +1,7 @@
 # Prophetable
 
+![image](https://raw.githubusercontent.com/jucyai/prophetable/dev/prophetable.png)
+
 Define and run Prophet forecasting models using a configuration file.
 
 `Prophet` is a python library from Facebook for forecasting time series data. Using `Prophetable`,
